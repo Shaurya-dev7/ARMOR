@@ -3,18 +3,20 @@ import { Radar } from 'lucide-react';
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <Link href="/" className={`flex items-center gap-2 group ${className}`}>
-      <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 group-hover:border-primary/50 transition-colors">
-        <Radar className="w-6 h-6 text-primary animate-pulse-slow" />
+    <Link href="/" className={`flex items-center gap-3 group ${className}`}>
+      <div className="relative flex items-center justify-center w-11 h-11 rounded-[0.9rem] bg-background/50 border border-white/10 group-hover:border-primary/50 transition-all duration-500 shadow-2xl overflow-hidden shadow-primary/5">
+        <Radar className="w-6 h-6 text-primary group-hover:scale-110 transition-transform duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
       <div className="flex flex-col">
-        <span className="text-lg font-bold tracking-tight text-foreground leading-none group-hover:text-primary transition-colors">
-          COSMIC
+        <span className="text-xl font-black tracking-tighter text-white leading-none group-hover:text-primary transition-colors duration-300">
+          ARMOR
         </span>
-        <span className="text-xs font-medium tracking-widest text-muted-foreground group-hover:text-primary/80 transition-colors uppercase">
-          WATCH
+        <span className="text-[0.65rem] font-bold tracking-[0.3em] text-primary/60 group-hover:text-primary transition-colors duration-500 uppercase">
+          Planetary Defense
         </span>
       </div>
     </Link>
   );
 }
+

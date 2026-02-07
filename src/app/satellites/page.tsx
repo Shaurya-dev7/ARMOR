@@ -14,6 +14,8 @@ import {
   Filter,
   ArrowUpDown
 } from 'lucide-react';
+import AnimatedShaderBackground from '@/components/ui/animated-shader-background';
+import { BauhausCard } from '@/components/ui/bauhaus-card';
 
 interface SatelliteData {
   norad_id: number;
@@ -123,7 +125,9 @@ export default function SatellitesPage() {
   };
 
   return (
-    <div className="container py-8 space-y-8">
+    <>
+    <AnimatedShaderBackground />
+    <div className="section-container pt-24 pb-20 space-y-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -282,41 +286,36 @@ export default function SatellitesPage() {
 
       {/* Satellite Grid */}
       {!isLoading && !error && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredSatellites.map((sat) => (
-            <Card key={sat.norad_id} className="border-white/5 bg-card/40 backdrop-blur-sm hover:bg-card/60 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold truncate" title={sat.name}>{sat.name}</h3>
-                    <p className="text-xs text-muted-foreground">NORAD: {sat.norad_id}</p>
-                  </div>
-                  <Badge variant="outline" className={orbitColors[sat.orbit_class] || 'bg-gray-500/10'}>
-                    {sat.orbit_class}
-                  </Badge>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-muted-foreground">Status</span>
-                    <div className={`font-medium ${sat.status === 'ACTIVE' ? 'text-green-500' : 'text-muted-foreground'}`}>
-                      {sat.status || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Country</span>
-                    <div className="font-medium">{sat.country || 'Unknown'}</div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Type</span>
-                    <div className="font-medium">{sat.object_type || 'Unknown'}</div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Period</span>
-                    <div className="font-medium">{sat.period_minutes ? `${sat.period_minutes.toFixed(1)} min` : '--'}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <BauhausCard
+              key={sat.norad_id}
+              id={sat.norad_id.toString()}
+              accentColor={
+                sat.orbit_class === 'LEO' ? '#156ef6' : 
+                sat.orbit_class === 'GEO' ? '#8f10f6' : 
+                sat.orbit_class === 'MEO' ? '#24d200' : '#fc6800'
+              }
+              backgroundColor="var(--bauhaus-card-bg)"
+              separatorColor="var(--bauhaus-card-separator)"
+              topInscription={`${sat.country || 'Global'} • ${sat.object_type || 'Payload'}`}
+              mainText={sat.name}
+              subMainText={`NORAD: ${sat.norad_id} | Orbit: ${sat.orbit_class}`}
+              progressBarInscription="Orbital Stability"
+              progress={sat.status === 'ACTIVE' ? 88.5 : 0}
+              progressValue={sat.status || 'Unknown'}
+              filledButtonInscription="Track Asset"
+              outlinedButtonInscription="Details"
+              textColorTop="var(--bauhaus-card-inscription-top)"
+              textColorMain="var(--bauhaus-card-inscription-main)"
+              textColorSub="var(--bauhaus-card-inscription-sub)"
+              textColorProgressLabel="var(--bauhaus-card-inscription-progress-label)"
+              textColorProgressValue="var(--bauhaus-card-inscription-progress-value)"
+              progressBarBackground="var(--bauhaus-card-progress-bar-bg)"
+              chronicleButtonBg="var(--bauhaus-chronicle-bg)"
+              chronicleButtonFg="var(--bauhaus-chronicle-fg)"
+              chronicleButtonHoverFg="var(--bauhaus-chronicle-hover-fg)"
+            />
           ))}
         </div>
       )}
@@ -328,5 +327,6 @@ export default function SatellitesPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

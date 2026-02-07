@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MOCK_SATELLITES } from '@/lib/data';
 import { Satellite, Zap, Globe, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BauhausCard } from '@/components/ui/bauhaus-card';
 
 const TABS = ['LEO', 'MEO', 'GEO', 'ALL'];
 
@@ -18,7 +19,7 @@ export default function SpaceAssetsPage() {
     : MOCK_SATELLITES.filter(s => s.orbit === activeTab);
 
   return (
-    <div className="container py-8 space-y-8">
+    <div className="section-container pt-24 pb-20 space-y-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Space Assets Monitor</h1>
@@ -47,62 +48,34 @@ export default function SpaceAssetsPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredSatellites.map((sat) => (
-          <Card key={sat.id} className="border-white/5 bg-card/40 backdrop-blur-sm hover:border-primary/30 transition-colors">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                {sat.id === 'ISS' ? <Zap className="w-4 h-4 text-primary" /> : <Satellite className="w-4 h-4 text-muted-foreground" />}
-                {sat.name}
-              </CardTitle>
-              <Badge variant="outline">{sat.orbit}</Badge>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="h-32 w-full rounded-md bg-black/50 overflow-hidden mb-4 relative group">
-                 <div 
-                   className="absolute inset-0 bg-cover bg-center opacity-60 group-hover:opacity-80 transition-opacity duration-500"
-                   style={{ 
-                     backgroundImage: sat.id === 'ISS' 
-                       ? 'url("https://www.nasa.gov/sites/default/files/thumbnails/image/iss065e324398.jpg")' 
-                       : 'url("https://images-assets.nasa.gov/image/PIA12348/PIA12348~orig.jpg")' 
-                   }}
-                 />
-                 <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
-                 <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
-                    <Badge variant="outline" className="bg-black/50 backdrop-blur-md border-white/10 text-xs">{sat.orbit}</Badge>
-                 </div>
-              </div>
-
-              <div className="space-y-4">
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-muted-foreground">Status</span>
-                   <Badge className={cn(
-                     sat.status === 'Active' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500'
-                   )}>
-                     {sat.status}
-                   </Badge>
-                 </div>
-                 
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-muted-foreground">Risk Level</span>
-                   <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "font-bold",
-                        sat.risk_level === 'None' ? 'text-muted-foreground' : 
-                        sat.risk_level === 'Low' ? 'text-primary' : 'text-orange-500'
-                      )}>
-                        {sat.risk_level}
-                      </span>
-                      {sat.risk_level !== 'None' && <AlertTriangle className="w-4 h-4 text-orange-500" />}
-                   </div>
-                 </div>
-
-                 {sat.risk_level !== 'None' && (
-                   <div className="p-2 bg-orange-500/10 border border-orange-500/20 rounded text-xs text-orange-200">
-                     Proximity alert: 2025 CW1 passing within 200km of orbital shell.
-                   </div>
-                 )}
-              </div>
-            </CardContent>
-          </Card>
+           <BauhausCard
+             key={sat.id}
+             id={sat.id}
+             accentColor={
+               sat.risk_level === 'Critical' ? '#ef4444' : 
+               sat.risk_level === 'Attention' ? '#fc6800' : 
+               sat.risk_level === 'Monitor' ? '#156ef6' : '#24d200'
+             }
+             backgroundColor="var(--bauhaus-card-bg)"
+             separatorColor="var(--bauhaus-card-separator)"
+             topInscription={`${sat.orbit} • MISSION CONTROL`}
+             mainText={sat.name}
+             subMainText={`Status: ${sat.status} | Tracking ID: ${sat.id}`}
+             progressBarInscription="Collision Probability"
+             progress={sat.risk_level === 'Critical' ? 85 : sat.risk_level === 'Attention' ? 45 : sat.risk_level === 'Monitor' ? 15 : 0}
+             progressValue={sat.risk_level === 'None' ? 'Nominal' : `${sat.risk_level} Warning`}
+             filledButtonInscription="View Telemetry"
+             outlinedButtonInscription="Alert Logs"
+             textColorTop="var(--bauhaus-card-inscription-top)"
+             textColorMain="var(--bauhaus-card-inscription-main)"
+             textColorSub="var(--bauhaus-card-inscription-sub)"
+             textColorProgressLabel="var(--bauhaus-card-inscription-progress-label)"
+             textColorProgressValue="var(--bauhaus-card-inscription-progress-value)"
+             progressBarBackground="var(--bauhaus-card-progress-bar-bg)"
+             chronicleButtonBg="var(--bauhaus-chronicle-bg)"
+             chronicleButtonFg="var(--bauhaus-chronicle-fg)"
+             chronicleButtonHoverFg="var(--bauhaus-chronicle-hover-fg)"
+           />
         ))}
       </div>
 

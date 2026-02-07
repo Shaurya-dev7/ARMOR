@@ -10,6 +10,27 @@ import type { RawNeoWsFeedResponse, NeoWsError } from './types';
 const NEOWS_BASE_URL = 'https://api.nasa.gov/neo/rest/v1';
 const MAX_DATE_RANGE_DAYS = 7;
 
+// Curated list of famous asteroids for "Smart Search"
+// Maps common names (lowercase) to NEO Reference IDs
+export const FAMOUS_ASTEROIDS = new Map<string, string>([
+  ['apophis', '2099942'],
+  ['bennu', '2101955'],
+  ['ryugu', '2162173'],
+  ['eros', '2000433'],
+  ['didymos', '2065803'],
+  ['dimorphos', '2065803'], // Same system
+  ['psyche', '2000016'],
+  ['ceres', '2000001'],
+  ['vesta', '2000004'],
+  ['pallas', '2000002'],
+  ['juno', '2000003'],
+  ['florence', '2312233'],
+  ['halley', '1000036'], // Halley's Comet (might need comet API, but keeping for ID ref)
+  ['oumuamua', '3781865'],
+  ['2023 dz2', '54351582'],
+  ['2029', '2099942'], // Apophis year
+]);
+
 /**
  * Format a Date object to YYYY-MM-DD string
  */
@@ -161,4 +182,53 @@ export async function fetchWeekAsteroids(): Promise<RawNeoWsFeedResponse> {
   nextWeek.setDate(today.getDate() + 6); // 7 days total including today
   
   return fetchNeoWsFeed({ startDate: today, endDate: nextWeek });
+}
+
+/**
+ * Fetch details for a specific Asteroid by ID.
+ */
+export async function fetchAsteroidById(id: string): Promise<any> {
+  const apiKey = getApiKey();
+  const url = `${NEOWS_BASE_URL}/neo/${id}?api_key=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+       if (response.status === 404) return null;
+       throw new Error(`NeoWs API returned status ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching asteroid ${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Search for an asteroid by Name (Smart Lookup) or ID.
+ * Returns null if not found.
+ */
+export async function searchAsteroids(query: string): Promise<any | null> {
+  const normalizedQuery = query.toLowerCase().trim();
+  
+  // 1. Check Famous Asteroids Dictionary
+  if (FAMOUS_ASTEROIDS.has(normalizedQuery)) {
+    const id = FAMOUS_ASTEROIDS.get(normalizedQuery)!;
+    return await fetchAsteroidById(id);
+  }
+
+  // 2. Check if query is a numeric ID (SPK-ID)
+  // SPK-IDs are typically 7 digits, but can vary.
+  if (/^\d{6,8}$/.test(normalizedQuery)) {
+    return await fetchAsteroidById(normalizedQuery);
+  }
+
+  // 3. (Optional) Could try NeoWs Lookup API if supported, 
+  // but standard NeoWs feed doesn't support partial name search clearly 
+  // without downloading the full database.
+  // For now, we rely on ID or Famous Name.
+  
+  return null;
 }

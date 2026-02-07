@@ -16,6 +16,7 @@ import {
   Eye
 } from 'lucide-react';
 import Link from 'next/link';
+import AnimatedShaderBackground from '@/components/ui/animated-shader-background';
 
 interface Asteroid {
   id: string;
@@ -132,7 +133,9 @@ export default function AsteroidsPage() {
   };
 
   return (
-    <div className="container py-8 space-y-6">
+    <>
+    <AnimatedShaderBackground />
+    <div className="section-container pt-24 pb-20 space-y-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -324,5 +327,6 @@ export default function AsteroidsPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

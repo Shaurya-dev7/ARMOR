@@ -20,9 +20,12 @@ import {
   Target,
   Clock,
   ArrowUpRight,
+  LayoutDashboard,
   Image as ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
+
 
 // Types
 interface AsteroidData {
@@ -95,109 +98,7 @@ function RiskGauge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' |
   );
 }
 
-// Stat Card Component
-function StatCard({ 
-  icon: Icon, 
-  value, 
-  label, 
-  color = 'primary',
-  isLoading = false,
-  href
-}: { 
-  icon: React.ElementType;
-  value: string | number;
-  label: string;
-  color?: 'primary' | 'green' | 'yellow' | 'red' | 'blue' | 'purple';
-  isLoading?: boolean;
-  href?: string;
-}) {
-  const colorClasses = {
-    primary: 'text-primary bg-primary/10',
-    green: 'text-green-500 bg-green-500/10',
-    yellow: 'text-yellow-500 bg-yellow-500/10',
-    red: 'text-red-500 bg-red-500/10',
-    blue: 'text-blue-500 bg-blue-500/10',
-    purple: 'text-purple-500 bg-purple-500/10',
-  };
-  
-  const content = (
-    <div className={`flex items-center gap-4 p-4 rounded-xl bg-card/40 border border-white/5 backdrop-blur-sm transition-all ${href ? 'hover:bg-card/60 cursor-pointer' : ''}`}>
-      <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-        <Icon className={`w-5 h-5 ${isLoading ? 'animate-pulse' : ''}`} />
-      </div>
-      <div className="flex-1">
-        {isLoading ? (
-          <div className="h-8 w-16 bg-white/10 rounded animate-pulse" />
-        ) : (
-          <span className="text-2xl font-bold tracking-tight">
-            {typeof value === 'number' ? value.toLocaleString('en-US') : value}
-          </span>
-        )}
-        <div className="text-xs text-muted-foreground uppercase tracking-wider">{label}</div>
-      </div>
-      {href && <ArrowUpRight className="w-4 h-4 text-muted-foreground" />}
-    </div>
-  );
 
-  return href ? <Link href={href}>{content}</Link> : content;
-}
-
-// Alert Card with Image Background
-function AlertCard({ asteroid }: { asteroid: AsteroidData }) {
-  const severityColors = {
-    info: 'border-blue-500/30 bg-blue-500/5',
-    warning: 'border-yellow-500/30 bg-yellow-500/5',
-    alert: 'border-orange-500/30 bg-orange-500/5',
-    critical: 'border-red-500/30 bg-red-500/5',
-  };
-
-  const badgeColors = {
-    info: 'bg-blue-500/20 text-blue-500 border-blue-500/30',
-    warning: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30',
-    alert: 'bg-orange-500/20 text-orange-500 border-orange-500/30',
-    critical: 'bg-red-500/20 text-red-500 border-red-500/30',
-  };
-
-  return (
-    <div className={`relative p-4 rounded-xl border backdrop-blur-sm overflow-hidden ${severityColors[asteroid.severity]}`}>
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 opacity-10 bg-cover bg-center"
-        style={{ 
-          backgroundImage: `url('https://images-assets.nasa.gov/image/PIA22946/PIA22946~small.jpg')` 
-        }}
-      />
-      
-      <div className="relative flex items-start gap-4">
-        <RiskGauge score={asteroid.risk_score} size="sm" />
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold truncate">{asteroid.name}</h4>
-            <Badge variant="outline" className={`text-[10px] ${badgeColors[asteroid.severity]}`}>
-              {asteroid.severity_label}
-            </Badge>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-            <div>
-              <span className="block opacity-60">Size</span>
-              <span className="font-medium text-foreground">{asteroid.size_km.toFixed(3)} km</span>
-            </div>
-            <div>
-              <span className="block opacity-60">Distance</span>
-              <span className="font-medium text-foreground">{(asteroid.miss_distance_km / 1000000).toFixed(2)}M km</span>
-            </div>
-            <div>
-              <span className="block opacity-60">Velocity</span>
-              <span className="font-medium text-foreground">{Math.round(asteroid.velocity_kph / 1000)} km/s</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Radar Chart
 function RadarChart({ data }: { data: { label: string; value: number }[] }) {
@@ -206,21 +107,81 @@ function RadarChart({ data }: { data: { label: string; value: number }[] }) {
   
   const points = data.map((d, i) => {
     const angle = i * angleStep - Math.PI / 2;
-    const val = Math.min(d.value, 1) * r;
-    return `${cx + val * Math.cos(angle)},${cy + val * Math.sin(angle)}`;
-  }).join(' ');
+    const val = Math.max(0.1, Math.min(d.value, 1)) * r; 
+    return {
+      x: cx + val * Math.cos(angle),
+      y: cy + val * Math.sin(angle),
+      angle
+    };
+  });
+
+  const pointsString = points.map(p => `${p.x},${p.y}`).join(' ');
   
   return (
-    <svg viewBox="0 0 200 200" className="w-full h-full">
+    <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible">
+      <defs>
+        <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <linearGradient id="radar-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.1" />
+        </linearGradient>
+      </defs>
+
+      {/* Grid rings */}
       {[0.25, 0.5, 0.75, 1].map((l, i) => (
-        <circle key={i} cx={cx} cy={cy} r={r * l} fill="none" stroke="currentColor" strokeOpacity={0.1} />
+        <circle key={i} cx={cx} cy={cy} r={r * l} fill="none" stroke="white" strokeOpacity={0.05} strokeDasharray={i === 3 ? "0" : "2 2"} />
       ))}
-      <polygon points={points} fill="hsl(var(--primary))" fillOpacity={0.2} stroke="hsl(var(--primary))" strokeWidth={2} />
-      {data.map((d, i) => {
+
+      {/* Axes */}
+      {data.map((_, i) => {
         const angle = i * angleStep - Math.PI / 2;
         return (
-          <text key={i} x={cx + (r + 16) * Math.cos(angle)} y={cy + (r + 16) * Math.sin(angle)}
-            textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[9px]">{d.label}</text>
+          <line
+            key={`axis-${i}`}
+            x1={cx} y1={cy}
+            x2={cx + r * Math.cos(angle)}
+            y2={cy + r * Math.sin(angle)}
+            stroke="white" strokeOpacity={0.1} strokeWidth={0.5}
+          />
+        );
+      })}
+
+      {/* Polygon */}
+      <polygon 
+        points={pointsString} 
+        fill="url(#radar-grad)" 
+        stroke="var(--primary)" 
+        strokeWidth={1.5} 
+        filter="url(#neon-glow)"
+        className="transition-all duration-1000 ease-in-out"
+      />
+
+      {/* Data markers */}
+      {points.map((p, i) => (
+        <circle 
+          key={`dot-${i}`} 
+          cx={p.x} cy={p.y} r={2} 
+          fill="var(--primary)" 
+          className="animate-pulse"
+        />
+      ))}
+
+      {/* Labels */}
+      {data.map((d, i) => {
+        const angle = i * angleStep - Math.PI / 2;
+        const lx = cx + (r + 20) * Math.cos(angle);
+        const ly = cy + (r + 20) * Math.sin(angle);
+        return (
+          <text 
+            key={i} x={lx} y={ly}
+            textAnchor="middle" dominantBaseline="middle" 
+            className="fill-white/30 text-[7px] font-mono font-bold uppercase tracking-widest"
+          >
+            {d.label}
+          </text>
         );
       })}
     </svg>
@@ -304,90 +265,283 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="container py-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">Mission Control</h1>
-            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-              <span className="relative flex h-2 w-2 mr-2">
-                <span className="animate-ping absolute h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              Live
-            </Badge>
-          </div>
-          <p className="text-muted-foreground mt-1">Real-time orbital intelligence with risk scoring</p>
+    <div className="relative min-h-screen text-white">
+      {/* 1. Background Layers - Matching Homepage Style */}
+      <div className="fixed inset-0 z-0 bg-[#020205] pointer-events-none">
+        <div className="star-field">
+          <div className="falling-star" style={{ top: '0%', left: '100%', animationDelay: '0s', animationDuration: '15s' }} />
+          <div className="falling-star" style={{ top: '30%', left: '80%', animationDelay: '5s', animationDuration: '20s' }} />
+          <div className="falling-star" style={{ top: '10%', left: '60%', animationDelay: '10s', animationDuration: '25s' }} />
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAllData} disabled={data.isLoading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${data.isLoading ? 'animate-spin' : ''}`} />
-          {timeSinceSync !== null ? `${timeSinceSync}s ago` : 'Refresh'}
-        </Button>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/5 to-purple-900/5" />
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen animate-float" />
+        <div className="absolute bottom-[-5%] left-[-5%] w-[700px] h-[700px] bg-cyan-600/5 rounded-full blur-[120px] mix-blend-screen animate-float" style={{ animationDelay: '3s' }} />
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <StatCard icon={Rocket} value={data.asteroids.length} label="NEOs Tracked" color="primary" isLoading={data.isLoading} href="/asteroids" />
-        <StatCard icon={AlertTriangle} value={criticalAlerts.length} label="Critical Alerts" color={criticalAlerts.length > 0 ? 'red' : 'green'} isLoading={data.isLoading} />
-        <StatCard icon={Target} value={hazardousCount} label="Hazardous" color={hazardousCount > 0 ? 'yellow' : 'green'} isLoading={data.isLoading} />
-        <StatCard icon={Satellite} value={activeSatellites} label="Satellites" color="blue" isLoading={data.isLoading} href="/satellites" />
-        <StatCard icon={Shield} value={`${avgRiskScore}/100`} label="Avg Risk Score" color={avgRiskScore > 50 ? 'yellow' : 'green'} isLoading={data.isLoading} />
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Alert Cards */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" />
-              Active Alerts
-            </h2>
-            <Link href="/asteroids" className="text-sm text-muted-foreground hover:text-foreground">
-              View All →
-            </Link>
+      <div className="relative z-10 section-container pt-24 pb-20 space-y-12">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="animate-fade-in-up">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                <LayoutDashboard className="w-6 h-6 text-primary" />
+              </div>
+              <span className="text-xs font-mono font-black tracking-[0.5em] text-primary uppercase">Console Operational</span>
+            </div>
+            <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-none text-white">
+              MISSION <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/20">CONTROL</span>
+            </h1>
+            <p className="text-xl text-blue-100/60 mt-4 max-w-xl font-light">
+              Autonomous risk detection and orbital vector monitoring in real-time.
+            </p>
           </div>
           
-          {data.isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-32 bg-white/5 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : data.asteroids.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">No alerts at this time</div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {data.asteroids.slice(0, 6).map(asteroid => (
-                <AlertCard key={asteroid.id} asteroid={asteroid} />
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-4 animate-fade-in-up animation-delay-200">
+             <div className="flex flex-col items-end">
+                <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-1">Telemetry Status</span>
+                <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 py-1 px-3">
+                  <span className="relative flex h-2 w-2 mr-2">
+                    <span className="animate-ping absolute h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  LIVE FEED
+                </Badge>
+             </div>
+             <Button variant="outline" onClick={fetchAllData} disabled={data.isLoading} className="cosmic-button-outline h-14 px-8 text-sm">
+                <RefreshCw className={`mr-2 h-4 w-4 ${data.isLoading ? 'animate-spin' : ''}`} />
+                {timeSinceSync !== null ? `RE-SYNC (${timeSinceSync}s ago)` : 'SYNC SYSTEM'}
+             </Button>
+          </div>
         </div>
 
-        {/* Radar Chart */}
-        <Card className="border-white/5 bg-card/40 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              Threat Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="w-full aspect-square max-w-[200px] mx-auto">
-              <RadarChart data={radarData} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* 1. Core Statistics - High Contrast Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <StatCard icon={Rocket} value={data.asteroids.length} label="NEOs Tracked" color="primary" isLoading={data.isLoading} href="/asteroids" />
+          <StatCard icon={AlertTriangle} value={criticalAlerts.length} label="Critical Alerts" color={criticalAlerts.length > 0 ? 'red' : 'green'} isLoading={data.isLoading} />
+          <StatCard icon={Target} value={hazardousCount} label="Hazardous" color={hazardousCount > 0 ? 'yellow' : 'green'} isLoading={data.isLoading} />
+          <StatCard icon={Satellite} value={activeSatellites} label="Space Assets" color="blue" isLoading={data.isLoading} href="/satellites" />
+          <StatCard icon={Shield} value={`${avgRiskScore}/100`} label="Avg Risk Factor" color={avgRiskScore > 50 ? 'yellow' : 'green'} isLoading={data.isLoading} />
+        </div>
 
-      {/* Data Sources */}
-      <div className="flex items-center justify-center gap-8 py-4 text-xs text-muted-foreground border-t border-white/5">
-        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500" />NASA NeoWs</span>
-        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" />CelesTrak</span>
-        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500" />NASA Images</span>
+        {/* 2. Primary Layout - Alerts and Visualization */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Active Alerts (Left 8 Columns) */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-white/5">
+              <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                <Radio className="w-6 h-6 text-primary animate-pulse" />
+                ACTIVE THREAT VECTORS
+              </h2>
+              <Link href="/asteroids" className="text-xs font-mono text-white/40 hover:text-white transition-colors tracking-widest uppercase">
+                Browse Full Catalog ↗
+              </Link>
+            </div>
+            
+            {data.isLoading ? (
+              <div className="grid gap-6 md:grid-cols-2">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="h-40 glass-card animate-pulse" />
+                ))}
+              </div>
+            ) : data.asteroids.length === 0 ? (
+              <div className="p-20 glass-card flex flex-col items-center justify-center text-center">
+                <Shield className="w-12 h-12 text-white/10 mb-4" />
+                <p className="text-white/40 tracking-widest uppercase text-sm">No Immediate Threats Detected</p>
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2">
+                {data.asteroids.slice(0, 6).map(asteroid => (
+                  <AlertCard key={asteroid.id} asteroid={asteroid} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Visualization & Health (Right 4 Columns) */}
+          <div className="lg:col-span-4 space-y-8">
+            
+            {/* Threat Overview Radar */}
+            <div className="glass-card glow-border p-8 flex flex-col items-center text-center">
+              <h3 className="text-sm font-black tracking-[0.3em] uppercase mb-8 text-white/60">Global Risk Profile</h3>
+              <div className="w-full aspect-square relative flex items-center justify-center">
+                 <div className="absolute inset-0 border border-white/5 rounded-full animate-pulse shadow-[0_0_50px_rgba(255,255,255,0.02)]" />
+                 <RadarChart data={radarData} />
+              </div>
+              <div className="mt-8 pt-6 border-t border-white/5 w-full text-left">
+                 <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-mono text-white/40 uppercase">System Integrity</span>
+                    <span className="text-[10px] font-mono text-green-400">NOMINAL</span>
+                 </div>
+                 <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 w-[94%]" />
+                 </div>
+              </div>
+            </div>
+
+            {/* Orbital Status - New Info to fill page */}
+            <div className="glass-card p-6 border-l-4 border-l-primary space-y-6">
+               <h3 className="text-lg font-black tracking-tight">ORBITAL CLARITY</h3>
+               <div className="space-y-4">
+                  {[
+                    { label: "Deep Space Network", status: "STABLE", icon: Globe, color: "text-blue-400" },
+                    { label: "Sentinel-1 Tracking", status: "ACTIVE", icon: Orbit, color: "text-purple-400" },
+                    { label: "NEO Validation", status: "NOMINAL", icon: Target, color: "text-green-400" },
+                    { label: "Sensor Array Health", status: "98.2%", icon: Activity, color: "text-cyan-400" },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                       <div className="flex items-center gap-3">
+                          <item.icon className={`w-4 h-4 ${item.color}`} />
+                          <span className="text-xs font-medium text-white/80">{item.label}</span>
+                       </div>
+                       <span className="text-[10px] font-mono font-bold">{item.status}</span>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Global Footer Source Indicators */}
+        <div className="flex flex-wrap items-center justify-center gap-12 py-8 text-[10px] font-mono uppercase tracking-[0.3em] text-white/30 border-t border-white/5">
+          <span className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]" />
+            NASA NeoWs API v1.4
+          </span>
+          <span className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_#3b82f6]" />
+            CelesTrak Orbital v2.1
+          </span>
+          <span className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_10px_#a855f7]" />
+            NASA Planetary Data System
+          </span>
+        </div>
       </div>
     </div>
   );
 }
+
+// Sub-components updated for high-contrast dashboard aesthetics
+
+function StatCard({ 
+  icon: Icon, 
+  value, 
+  label, 
+  color = 'primary',
+  isLoading = false,
+  href
+}: { 
+  icon: any;
+  value: string | number;
+  label: string;
+  color?: 'primary' | 'green' | 'yellow' | 'red' | 'blue' | 'purple';
+  isLoading?: boolean;
+  href?: string;
+}) {
+  const colorIcons = {
+    primary: 'text-primary',
+    green: 'text-green-400',
+    yellow: 'text-yellow-400',
+    red: 'text-red-400',
+    blue: 'text-blue-400',
+    purple: 'text-purple-400',
+  };
+  
+  const content = (
+    <div className={cn(
+      "group relative flex flex-col gap-4 p-8 glass-card glow-border transition-all duration-500",
+      href ? 'hover:scale-[1.02] cursor-pointer' : ''
+    )}>
+      <div className="flex items-start justify-between">
+        <div className={cn("p-3 rounded-xl bg-white/5 border border-white/5 group-hover:scale-110 transition-transform duration-500", colorIcons[color])}>
+          <Icon className="w-6 h-6" />
+        </div>
+        {href && <ArrowUpRight className="w-5 h-5 text-white/20 group-hover:text-white transition-colors" />}
+      </div>
+      
+      <div className="space-y-1">
+        {isLoading ? (
+          <div className="h-10 w-24 bg-white/5 rounded animate-pulse" />
+        ) : (
+          <span className="text-4xl font-black tracking-tighter text-white">
+            {typeof value === 'number' ? value.toLocaleString('en-US') : value}
+          </span>
+        )}
+        <div className="text-[10px] font-mono font-black text-white/40 uppercase tracking-[0.2em] group-hover:text-white/60 transition-colors">
+          {label}
+        </div>
+      </div>
+      
+      {/* Background Decor */}
+      <div className="absolute top-0 right-0 p-12 bg-white/[0.01] blur-[40px] rounded-full pointer-events-none" />
+    </div>
+  );
+
+  return href ? <Link href={href}>{content}</Link> : content;
+}
+
+function AlertCard({ asteroid }: { asteroid: AsteroidData }) {
+  const severityStyles = {
+    info: 'border-l-blue-500',
+    warning: 'border-l-yellow-500',
+    alert: 'border-l-orange-500',
+    critical: 'border-l-red-500 animate-pulse',
+  };
+
+  const badgeStyles = {
+    info: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    warning: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    alert: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    critical: 'bg-red-500/20 text-red-500 border-red-500/30 font-black',
+  };
+
+  return (
+    <div className={cn(
+      "group relative flex flex-col p-6 glass-card border-l-4 overflow-hidden gap-6",
+      severityStyles[asteroid.severity]
+    )}>
+      <div className="flex items-start gap-4">
+        <div className="scale-75 origin-top-left">
+           <RiskGauge score={asteroid.risk_score} size="md" />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-col gap-1 mb-4">
+            <h4 className="text-xl font-black tracking-tight text-white group-hover:text-primary transition-colors truncate">
+              {asteroid.name}
+            </h4>
+            <Badge variant="outline" className={cn("inline-fit w-fit text-[9px] font-mono tracking-widest uppercase py-0.5 px-2", badgeStyles[asteroid.severity])}>
+              {asteroid.severity_label}
+            </Badge>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+            <div className="space-y-1">
+              <span className="block text-[10px] font-mono text-white/30 uppercase tracking-tighter">Velocity</span>
+              <span className="text-sm font-bold text-white/90">
+                {Math.round(asteroid.velocity_kph).toLocaleString()} <span className="text-[10px] text-white/40">KM/H</span>
+              </span>
+            </div>
+            <div className="space-y-1">
+              <span className="block text-[10px] font-mono text-white/30 uppercase tracking-tighter">Miss Distance</span>
+              <span className="text-sm font-bold text-white/90">
+                {(asteroid.miss_distance_km / 1000000).toFixed(1)}M <span className="text-[10px] text-white/40">KM</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Footer Info */}
+      <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-white/40">
+         <span>SIZE: {asteroid.size_km.toFixed(3)} KM</span>
+         <span>APPROACH: {asteroid.approach_date}</span>
+      </div>
+      
+      {/* Decorative Gradient */}
+      <div className="absolute bottom-0 right-0 w-32 h-32 bg-primary/5 blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
+  );
+}
+

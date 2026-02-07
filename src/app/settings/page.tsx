@@ -1,10 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { User, Bell, Shield, LogOut } from 'lucide-react';
+import AnimatedShaderBackground from '@/components/ui/animated-shader-background';
 
 export default function ProfilePage() {
   return (
-    <div className="container py-8 space-y-8 max-w-4xl">
+    <>
+    <AnimatedShaderBackground />
+    <div className="section-container pt-24 pb-20 space-y-12 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
            <h1 className="text-3xl font-bold tracking-tight">Operator Profile</h1>
@@ -93,5 +96,6 @@ export default function ProfilePage() {
 
       </div>
     </div>
+    </>
   );
 }

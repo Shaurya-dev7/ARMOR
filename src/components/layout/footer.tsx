@@ -45,7 +45,7 @@ export function Footer() {
         </div>
         
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© 2026 Cosmic Watch. All rights reserved.</p>
+          <p>© 2026 ARMOR. All rights reserved.</p>
           <p>Mock Data Version - Hackathon Build</p>
         </div>
       </div>

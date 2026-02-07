@@ -1,7 +1,7 @@
 /**
  * NASA JPL Horizons API Module
  * 
- * Precision ephemeris extraction and normalization for Cosmic Watch.
+ * Precision ephemeris extraction and normalization for ARMOR.
  * 
  * This module:
  * - Queries NASA JPL Horizons for Cartesian state vectors

@@ -8,3 +8,5 @@ export * from './conjunction-interpreter';
 export * from './debris-interpreter';
 export * from './utils';
 export * from './main';
+export * from './public-alert-generator';
+

@@ -7,6 +7,7 @@ import {
   Info,
   ChevronRight
 } from 'lucide-react';
+import AnimatedShaderBackground from '@/components/ui/animated-shader-background';
 
 // Torino Scale Visual Gauge
 function TorinoGauge({ level = 0 }: { level?: number }) {
@@ -130,7 +131,7 @@ function OrbitUncertainty() {
 }
 
 // Info Card with icon
-function InfoCard({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
+function InfoCard({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-4 p-4 rounded-xl bg-card/40 border border-white/5 backdrop-blur-sm hover:bg-card/60 transition-colors cursor-pointer group">
       <div className="p-2 rounded-lg bg-primary/10 h-fit">
@@ -149,7 +150,9 @@ function InfoCard({ icon: Icon, title, children }: { icon: React.ElementType; ti
 
 export default function RiskIntelligencePage() {
   return (
-    <div className="container py-8 space-y-8">
+    <>
+    <AnimatedShaderBackground />
+    <div className="section-container pt-24 pb-20 space-y-12">
       {/* Header */}
       <div className="flex items-center gap-4">
         <div className="p-3 rounded-xl bg-primary/10">
@@ -231,5 +234,6 @@ export default function RiskIntelligencePage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
