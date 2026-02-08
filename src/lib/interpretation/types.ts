@@ -102,6 +102,8 @@ export interface RiskExplanation {
  * - Add alarmist framing
  * - Remove confidence language
  */
+import { PublicAlertOutput } from './public-alert-generator';
+
 export interface DecisionObject {
   /** Unique identifier for this interpretation */
   decision_id: string;
@@ -136,7 +138,11 @@ export interface DecisionObject {
   technical_summary?: string;
   /** Source data snapshot for audit */
   source_snapshot?: Record<string, unknown>;
+
+  /** Public-facing calm alert message (optional, usually for asteroids) */
+  public_alert?: PublicAlertOutput;
 }
+
 
 // =============================================================================
 // INPUT TYPES (What this layer receives)

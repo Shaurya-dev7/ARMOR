@@ -1,63 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Navbar } from '@/components/layout/navbar';
+import { Footer } from '@/components/layout/footer';
+import { useAsteroids } from '@/lib/hooks/use-asteroids';
+import { useAuth } from '@/lib/hooks/useAuth';
+import AnimatedShaderBackground from '@/components/ui/animated-shader-background';
 import { 
-  Activity, 
   Rocket, 
   Shield, 
   Satellite, 
   AlertTriangle,
-  TrendingUp,
   Radio,
   RefreshCw,
   Globe,
   Orbit,
-  Zap,
-  Database,
+  Activity,
   Target,
-  Clock,
-  ArrowUpRight,
   LayoutDashboard,
-  Image as ImageIcon
+  ArrowUpRight,
+  Star
 } from 'lucide-react';
-import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-
-// Types
-interface AsteroidData {
-  id: string;
-  name: string;
-  size_km: number;
-  velocity_kph: number;
-  miss_distance_km: number;
-  approach_date: string;
-  is_potentially_hazardous: boolean;
-  risk_score: number;
-  severity: 'info' | 'warning' | 'alert' | 'critical';
-  severity_label: string;
-  severity_color: string;
-}
-
-interface SatelliteData {
-  norad_id: number;
-  name: string;
-  object_type: string;
-  status: string;
-  orbit_class: string;
-  country: string;
-}
-
-interface DashboardData {
-  asteroids: AsteroidData[];
-  satellites: SatelliteData[];
-  isLoading: boolean;
-  lastSync: Date | null;
-  errors: string[];
-}
+import Link from 'next/link';
+import { Asteroid } from '@/types/asteroid';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Risk Gauge Component
 function RiskGauge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
@@ -98,8 +67,6 @@ function RiskGauge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' |
   );
 }
 
-
-
 // Radar Chart
 function RadarChart({ data }: { data: { label: string; value: number }[] }) {
   const cx = 100, cy = 100, r = 70;
@@ -130,12 +97,10 @@ function RadarChart({ data }: { data: { label: string; value: number }[] }) {
         </linearGradient>
       </defs>
 
-      {/* Grid rings */}
       {[0.25, 0.5, 0.75, 1].map((l, i) => (
         <circle key={i} cx={cx} cy={cy} r={r * l} fill="none" stroke="white" strokeOpacity={0.05} strokeDasharray={i === 3 ? "0" : "2 2"} />
       ))}
 
-      {/* Axes */}
       {data.map((_, i) => {
         const angle = i * angleStep - Math.PI / 2;
         return (
@@ -149,7 +114,6 @@ function RadarChart({ data }: { data: { label: string; value: number }[] }) {
         );
       })}
 
-      {/* Polygon */}
       <polygon 
         points={pointsString} 
         fill="url(#radar-grad)" 
@@ -159,7 +123,6 @@ function RadarChart({ data }: { data: { label: string; value: number }[] }) {
         className="transition-all duration-1000 ease-in-out"
       />
 
-      {/* Data markers */}
       {points.map((p, i) => (
         <circle 
           key={`dot-${i}`} 
@@ -169,7 +132,6 @@ function RadarChart({ data }: { data: { label: string; value: number }[] }) {
         />
       ))}
 
-      {/* Labels */}
       {data.map((d, i) => {
         const angle = i * angleStep - Math.PI / 2;
         const lx = cx + (r + 20) * Math.cos(angle);
@@ -189,75 +151,29 @@ function RadarChart({ data }: { data: { label: string; value: number }[] }) {
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData>({
-    asteroids: [],
-    satellites: [],
-    isLoading: true,
-    lastSync: null,
-    errors: [],
-  });
+  const { user, loading: authLoading } = useAuth();
+  const { asteroids, favorites, loading: dataLoading, toggleFavorite } = useAsteroids();
+  const [satellites, setSatellites] = useState<any[]>([]); // Keep satellites fetch local for now
+  const router = useRouter();
 
-  const fetchAllData = async () => {
-    setData(prev => ({ ...prev, isLoading: true, errors: [] }));
-    const errors: string[] = [];
-    
-    try {
-      const [asteroidsRes, satellitesRes] = await Promise.allSettled([
-        fetch('/api/asteroids'),
-        fetch('/api/satellites'),
-      ]);
-
-      let asteroids: AsteroidData[] = [];
-      let satellites: SatelliteData[] = [];
-
-      if (asteroidsRes.status === 'fulfilled' && asteroidsRes.value.ok) {
-        const json = await asteroidsRes.value.json();
-        asteroids = json.asteroids || [];
-      } else {
-        errors.push('Asteroids API');
-      }
-
-      if (satellitesRes.status === 'fulfilled' && satellitesRes.value.ok) {
-        const json = await satellitesRes.value.json();
-        satellites = json.objects || [];
-      } else {
-        errors.push('Satellites API');
-      }
-
-      setData({
-        asteroids,
-        satellites,
-        isLoading: false,
-        lastSync: new Date(),
-        errors,
-      });
-
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-      setData(prev => ({ ...prev, isLoading: false, errors: ['Network error'] }));
-    }
-  };
-
+  // Fetch satellites separately since it's not in the asteroid hook
   useEffect(() => {
-    fetchAllData();
-    const interval = setInterval(fetchAllData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    fetch('/api/satellites')
+      .then(res => res.json())
+      .then(data => setSatellites(data.objects || []))
+      .catch(console.error);
   }, []);
 
   // Calculate stats
-  const criticalAlerts = data.asteroids.filter(a => a.severity === 'critical');
-  const hazardousCount = data.asteroids.filter(a => a.is_potentially_hazardous).length;
-  const activeSatellites = data.satellites.filter(s => s.status === 'ACTIVE').length || data.satellites.length;
-  const avgRiskScore = data.asteroids.length > 0 
-    ? Math.round(data.asteroids.reduce((sum, a) => sum + a.risk_score, 0) / data.asteroids.length) 
+  const criticalAlerts = asteroids.filter(a => a.severity === 'critical');
+  const hazardousCount = asteroids.filter(a => a.is_potentially_hazardous).length;
+  const activeSatellites = satellites.length; // Simplified
+  const avgRiskScore = asteroids.length > 0 
+    ? Math.round(asteroids.reduce((sum, a) => sum + a.risk_score, 0) / asteroids.length) 
     : 0;
 
-  const timeSinceSync = data.lastSync 
-    ? Math.floor((Date.now() - data.lastSync.getTime()) / 1000)
-    : null;
-
   const radarData = [
-    { label: 'NEOs', value: Math.min(data.asteroids.length / 20, 1) },
+    { label: 'NEOs', value: Math.min(asteroids.length / 20, 1) },
     { label: 'Hazard', value: Math.min(hazardousCount / 5, 1) },
     { label: 'Critical', value: Math.min(criticalAlerts.length / 3, 1) },
     { label: 'Satellites', value: Math.min(activeSatellites / 50, 1) },
@@ -266,7 +182,9 @@ export default function DashboardPage() {
 
   return (
     <div className="relative min-h-screen text-white">
-      {/* 1. Background Layers - Matching Homepage Style */}
+      <Navbar />
+      
+      {/* 1. Background Layers */}
       <div className="fixed inset-0 z-0 bg-[#020205] pointer-events-none">
         <div className="star-field">
           <div className="falling-star" style={{ top: '0%', left: '100%', animationDelay: '0s', animationDuration: '15s' }} />
@@ -292,7 +210,7 @@ export default function DashboardPage() {
               MISSION <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/20">CONTROL</span>
             </h1>
             <p className="text-xl text-blue-100/60 mt-4 max-w-xl font-light">
-              Autonomous risk detection and orbital vector monitoring in real-time.
+               Welcome back, <span className="font-bold text-white">{user?.user_metadata?.username || user?.email?.split('@')[0]}</span>.
             </p>
           </div>
           
@@ -307,26 +225,22 @@ export default function DashboardPage() {
                   LIVE FEED
                 </Badge>
              </div>
-             <Button variant="outline" onClick={fetchAllData} disabled={data.isLoading} className="cosmic-button-outline h-14 px-8 text-sm">
-                <RefreshCw className={`mr-2 h-4 w-4 ${data.isLoading ? 'animate-spin' : ''}`} />
-                {timeSinceSync !== null ? `RE-SYNC (${timeSinceSync}s ago)` : 'SYNC SYSTEM'}
-             </Button>
           </div>
         </div>
 
-        {/* 1. Core Statistics - High Contrast Grid */}
+        {/* 1. Core Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <StatCard icon={Rocket} value={data.asteroids.length} label="NEOs Tracked" color="primary" isLoading={data.isLoading} href="/asteroids" />
-          <StatCard icon={AlertTriangle} value={criticalAlerts.length} label="Critical Alerts" color={criticalAlerts.length > 0 ? 'red' : 'green'} isLoading={data.isLoading} />
-          <StatCard icon={Target} value={hazardousCount} label="Hazardous" color={hazardousCount > 0 ? 'yellow' : 'green'} isLoading={data.isLoading} />
-          <StatCard icon={Satellite} value={activeSatellites} label="Space Assets" color="blue" isLoading={data.isLoading} href="/satellites" />
-          <StatCard icon={Shield} value={`${avgRiskScore}/100`} label="Avg Risk Factor" color={avgRiskScore > 50 ? 'yellow' : 'green'} isLoading={data.isLoading} />
+          <StatCard icon={Rocket} value={asteroids.length} label="NEOs Tracked" color="primary" isLoading={dataLoading} href="/asteroids" />
+          <StatCard icon={AlertTriangle} value={criticalAlerts.length} label="Critical Alerts" color={criticalAlerts.length > 0 ? 'red' : 'green'} isLoading={dataLoading} />
+          <StatCard icon={Target} value={hazardousCount} label="Hazardous" color={hazardousCount > 0 ? 'yellow' : 'green'} isLoading={dataLoading} />
+          <StatCard icon={Satellite} value={activeSatellites} label="Space Assets" color="blue" isLoading={dataLoading} href="/satellites" />
+          <StatCard icon={Shield} value={`${avgRiskScore}/100`} label="Avg Risk Factor" color={avgRiskScore > 50 ? 'yellow' : 'green'} isLoading={dataLoading} />
         </div>
 
-        {/* 2. Primary Layout - Alerts and Visualization */}
+        {/* 2. Primary Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Active Alerts (Left 8 Columns) */}
+          {/* Active Alerts / Asteroid List (Left 8 Columns) */}
           <div className="lg:col-span-8 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-white/5">
               <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
@@ -338,21 +252,26 @@ export default function DashboardPage() {
               </Link>
             </div>
             
-            {data.isLoading ? (
+            {dataLoading ? (
               <div className="grid gap-6 md:grid-cols-2">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="h-40 glass-card animate-pulse" />
                 ))}
               </div>
-            ) : data.asteroids.length === 0 ? (
+            ) : asteroids.length === 0 ? (
               <div className="p-20 glass-card flex flex-col items-center justify-center text-center">
                 <Shield className="w-12 h-12 text-white/10 mb-4" />
                 <p className="text-white/40 tracking-widest uppercase text-sm">No Immediate Threats Detected</p>
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
-                {data.asteroids.slice(0, 6).map(asteroid => (
-                  <AlertCard key={asteroid.id} asteroid={asteroid} />
+                {asteroids.slice(0, 6).map(asteroid => (
+                  <AlertCard 
+                    key={asteroid.id} 
+                    asteroid={asteroid} 
+                    isFavorite={favorites.includes(asteroid.id)}
+                    onToggleFavorite={() => toggleFavorite(asteroid)}
+                  />
                 ))}
               </div>
             )}
@@ -379,7 +298,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Orbital Status - New Info to fill page */}
+            {/* Orbital Status */}
             <div className="glass-card p-6 border-l-4 border-l-primary space-y-6">
                <h3 className="text-lg font-black tracking-tight">ORBITAL CLARITY</h3>
                <div className="space-y-4">
@@ -418,6 +337,7 @@ export default function DashboardPage() {
           </span>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
@@ -481,7 +401,7 @@ function StatCard({
   return href ? <Link href={href}>{content}</Link> : content;
 }
 
-function AlertCard({ asteroid }: { asteroid: AsteroidData }) {
+function AlertCard({ asteroid, isFavorite, onToggleFavorite }: { asteroid: Asteroid; isFavorite?: boolean; onToggleFavorite?: () => void }) {
   const severityStyles = {
     info: 'border-l-blue-500',
     warning: 'border-l-yellow-500',
@@ -507,13 +427,25 @@ function AlertCard({ asteroid }: { asteroid: AsteroidData }) {
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex flex-col gap-1 mb-4">
-            <h4 className="text-xl font-black tracking-tight text-white group-hover:text-primary transition-colors truncate">
-              {asteroid.name}
-            </h4>
-            <Badge variant="outline" className={cn("inline-fit w-fit text-[9px] font-mono tracking-widest uppercase py-0.5 px-2", badgeStyles[asteroid.severity])}>
-              {asteroid.severity_label}
-            </Badge>
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex flex-col gap-1">
+              <h4 className="text-xl font-black tracking-tight text-white group-hover:text-primary transition-colors truncate">
+                {asteroid.name}
+              </h4>
+              <Badge variant="outline" className={cn("inline-fit w-fit text-[9px] font-mono tracking-widest uppercase py-0.5 px-2", badgeStyles[asteroid.severity])}>
+                {asteroid.severity_label}
+              </Badge>
+            </div>
+            
+            <button 
+               onClick={(e) => {
+                 e.preventDefault();
+                 onToggleFavorite?.();
+               }}
+               className="p-2 rounded-full hover:bg-white/10 transition-colors z-20"
+            >
+              <Star className={cn("w-5 h-5", isFavorite ? "text-yellow-400 fill-yellow-400" : "text-white/20 hover:text-yellow-400")} />
+            </button>
           </div>
           
           <div className="grid grid-cols-2 gap-y-4 gap-x-2">
@@ -540,8 +472,7 @@ function AlertCard({ asteroid }: { asteroid: AsteroidData }) {
       </div>
       
       {/* Decorative Gradient */}
-      <div className="absolute bottom-0 right-0 w-32 h-32 bg-primary/5 blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute bottom-0 right-0 w-32 h-32 bg-primary/5 blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
     </div>
   );
 }
-

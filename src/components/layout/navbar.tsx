@@ -14,7 +14,8 @@ import {
   LayoutDashboard, 
   Orbit, 
   ShieldAlert, 
-  Satellite
+  Satellite,
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -28,6 +29,7 @@ const NAV_LINKS = [
   { href: '/asteroids', label: 'Asteroids', icon: Orbit },
   { href: '/risk', label: 'Risk Intelligence', icon: ShieldAlert },
   { href: '/satellites', label: 'Space Assets', icon: Satellite },
+  { href: '/community', label: 'Community', icon: Users },
 ];
 
 export function Navbar() {

@@ -3,17 +3,23 @@
 import * as React from "react";
 import Image from "next/image";
 import { Shield, Chrome } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 const SignIn1 = () => {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  
+  const supabase = createClient();
+  const router = useRouter();
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (!email || !password) {
       setError("Please enter both email and password.");
       return;
@@ -22,12 +28,32 @@ const SignIn1 = () => {
       setError("Please enter a valid email address.");
       return;
     }
+    
     setError("");
-    alert("Sign in successful! (Demo)");
+    setLoading(true);
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        throw signInError;
+      }
+
+      // Successful login
+      router.push("/dashboard"); 
+
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden w-full">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden w-full pt-36">
       {/* Centered glass card */}
       <div className="relative z-10 w-full max-w-sm rounded-3xl bg-gradient-to-br from-white/10 to-background backdrop-blur-xl border border-white/10 shadow-2xl p-8 flex flex-col items-center">
         {/* Logo */}
@@ -68,9 +94,10 @@ const SignIn1 = () => {
           <div>
             <button
               onClick={handleSignIn}
-              className="w-full bg-primary text-primary-foreground font-medium px-5 py-3 rounded-full shadow-lg hover:brightness-110 transition mb-3 text-sm"
+              disabled={loading}
+              className="w-full bg-primary text-primary-foreground font-medium px-5 py-3 rounded-full shadow-lg hover:brightness-110 transition mb-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Establish Connection
+              {loading ? "CONNECTING..." : "Establish Connection"}
             </button>
             {/* Google Sign In */}
             <button className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-5 py-3 font-medium text-white shadow transition mb-2 text-sm border border-white/10">
@@ -134,17 +161,22 @@ const SignIn1 = () => {
 
 const SignUp1 = () => {
   const [email, setEmail] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [role, setRole] = React.useState("civilian");
   const [error, setError] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  
+  const supabase = createClient();
+  const router = useRouter();
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  const handleSignUp = () => {
-    if (!email || !password || !confirmPassword) {
+  const handleSignUp = async () => {
+    if (!email || !password || !confirmPassword || !username) {
       setError("Please fill in all fields.");
       return;
     }
@@ -156,16 +188,44 @@ const SignUp1 = () => {
       setError("Passwords do not match.");
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
+    
     setError("");
-    alert("Sign up successful! (Demo)");
+    setLoading(true);
+
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            role,
+          },
+        },
+      });
+
+      if (signUpError) {
+        throw signUpError;
+      }
+      
+      // If we need to strictly enforce the users table, we would insert here via an API route or trigger.
+      // For now, metadata is sufficient for client-side display.
+      
+      alert("Sign up successful! Please check your email for verification.");
+      router.push("/login");
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred during sign up.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden w-full">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden w-full pt-36">
       {/* Centered glass card */}
       <div className="relative z-10 w-full max-w-sm rounded-3xl bg-gradient-to-br from-white/10 to-background backdrop-blur-xl border border-white/10 shadow-2xl p-8 flex flex-col items-center">
         {/* Logo */}
@@ -182,6 +242,14 @@ const SignUp1 = () => {
         {/* Form */}
         <div className="flex flex-col w-full gap-4">
           <div className="w-full flex flex-col gap-3">
+             <input
+              suppressHydrationWarning
+              placeholder="Username"
+              type="text"
+              value={username}
+              className="w-full px-5 py-3 rounded-xl bg-white/10 text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 border border-white/10 transition-all"
+              onChange={(e) => setUsername(e.target.value)}
+            />
             <input
               suppressHydrationWarning
               placeholder="Email"
@@ -223,9 +291,10 @@ const SignUp1 = () => {
           <div>
             <button
               onClick={handleSignUp}
-              className="w-full bg-primary text-primary-foreground font-medium px-5 py-3 rounded-full shadow-lg hover:brightness-110 transition mb-3 text-sm"
+              disabled={loading}
+              className="w-full bg-primary text-primary-foreground font-medium px-5 py-3 rounded-full shadow-lg hover:brightness-110 transition mb-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Initialize Protocol
+              {loading ? "INITIALIZING..." : "Initialize Protocol"}
             </button>
             {/* Google Sign Up */}
             <button className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-5 py-3 font-medium text-white shadow transition mb-2 text-sm border border-white/10">

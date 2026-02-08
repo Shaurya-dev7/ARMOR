@@ -26,6 +26,13 @@ import {
 // MAIN INTERPRETER
 // =============================================================================
 
+import { 
+  generatePublicAlert, 
+  determineAlertLevel, 
+  convertAsteroidInputToPublicAlertData,
+  PublicAlertOutput 
+} from './public-alert-generator';
+
 export function interpretAsteroid(
   asteroid: AsteroidInput,
   context: SystemContext
@@ -49,6 +56,17 @@ export function interpretAsteroid(
   // 4. Generate Core Explanation Text
   const explanation = generateExplanationText(asteroid, relevance, confidence);
 
+  // 4b. Generate Public Alert (if meant for public)
+  let publicAlert: PublicAlertOutput | undefined;
+  if (!suppressed && relevance.civilian_relevance !== 'none') {
+    const alertData = convertAsteroidInputToPublicAlertData(asteroid);
+    publicAlert = {
+      alert_level: determineAlertLevel(alertData),
+      language: 'en',
+      message: generatePublicAlert(alertData)
+    };
+  }
+
   // 5. Assemble Decision
   const decision: DecisionObject = {
     decision_id: decisionId,
@@ -65,7 +83,9 @@ export function interpretAsteroid(
     summary: explanation.why_probably_not_dangerous,
     
     source_snapshot: asteroid as unknown as Record<string, unknown>,
+    public_alert: publicAlert,
   };
+
 
   return decision;
 }

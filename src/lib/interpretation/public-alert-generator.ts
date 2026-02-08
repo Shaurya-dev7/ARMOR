@@ -45,6 +45,62 @@ export interface PublicAlertData {
   is_potentially_hazardous?: boolean;
 }
 
+/**
+ * Alert levels for public-facing messages.
+ * Never use urgent or warning-style language for any level.
+ */
+export type AlertLevel = 'LEVEL 1' | 'LEVEL 2' | 'LEVEL 3';
+
+/**
+ * Structured output for public alerts.
+ */
+export interface PublicAlertOutput {
+  /** Alert level (LEVEL 1, 2, or 3) */
+  alert_level: AlertLevel;
+  /** Language of the message */
+  language: string;
+  /** The public-facing alert message */
+  message: string;
+}
+
+/**
+ * Determines the appropriate alert level based on asteroid data.
+ * 
+ * - LEVEL 1 — INFORMATIONAL: Routine close approaches
+ * - LEVEL 2 — MONITORING WATCH: Elevated size/speed/proximity
+ * - LEVEL 3 — SCIENTIFIC INTEREST: Large, fast, or well-tracked objects
+ */
+export function determineAlertLevel(data: PublicAlertData): AlertLevel {
+  const lunarDistances = data.distance_au / LUNAR_DISTANCE_AU;
+  
+  // LEVEL 3: Scientific Interest
+  // Large objects (>500m), or Sentry-monitored, or very fast (>30 km/s)
+  if (
+    data.diameter_meters >= 500 ||
+    data.is_sentry_monitored ||
+    data.velocity_km_s >= 30 ||
+    (data.is_potentially_hazardous && data.diameter_meters >= 200)
+  ) {
+    return 'LEVEL 3';
+  }
+  
+  // LEVEL 2: Monitoring Watch
+  // Medium objects (100-500m), close approaches (<5 lunar distances), or elevated PEI
+  if (
+    data.diameter_meters >= 100 ||
+    lunarDistances <= 5 ||
+    (data.pei_value && data.pei_value >= 50) ||
+    data.velocity_km_s >= 20
+  ) {
+    return 'LEVEL 2';
+  }
+  
+  // LEVEL 1: Informational
+  // Everything else - routine close approaches
+  return 'LEVEL 1';
+}
+
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
