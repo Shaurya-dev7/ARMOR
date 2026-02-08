@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ interface SatelliteStats {
 }
 
 export default function SatellitesPage() {
+  const router = useRouter();
   const [satellites, setSatellites] = useState<SatelliteData[]>([]);
   const [filteredSatellites, setFilteredSatellites] = useState<SatelliteData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,6 +124,14 @@ export default function SatellitesPage() {
     MEO: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
     GEO: 'bg-green-500/10 text-green-500 border-green-500/20',
     HEO: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+  };
+
+  const handleTrackAsset = (id: string) => {
+    router.push(`/satellites/${id}`);
+  };
+
+  const handleViewDetails = (id: string) => {
+    router.push(`/satellites/${id}`);
   };
 
   return (
@@ -315,6 +325,8 @@ export default function SatellitesPage() {
               chronicleButtonBg="var(--bauhaus-chronicle-bg)"
               chronicleButtonFg="var(--bauhaus-chronicle-fg)"
               chronicleButtonHoverFg="var(--bauhaus-chronicle-hover-fg)"
+              onFilledButtonClick={handleTrackAsset}
+              onOutlinedButtonClick={handleViewDetails}
             />
           ))}
         </div>

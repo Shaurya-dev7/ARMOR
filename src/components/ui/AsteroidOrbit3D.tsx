@@ -1,18 +1,31 @@
+'use client';
+
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Line, Stars } from '@react-three/drei';
+import { OrbitControls, Line, Stars, Text } from '@react-three/drei';
 import * as THREE from 'three';
 
 /**
  * AsteroidOrbit3D Component
  * Interactive 3D solar system visualization.
+ * 
+ * Modified to accept dynamic data.
  */
 
 // --- Configuration ---
 // Scaling note: 1 Astronomical Unit (AU) approximately equals 10 scene units for visualization.
 const AU_SCALE = 10; 
 
-const PLANET_DATA = [
+interface PlanetData {
+  name: string;
+  distance: number;
+  size: number;
+  color: string;
+  speed: number;
+  hasRings?: boolean;
+}
+
+const PLANET_DATA: PlanetData[] = [
   { name: 'Mercury', distance: 6, size: 0.38, color: '#E0E0E0', speed: 1.5 },
   { name: 'Venus', distance: 9, size: 0.95, color: '#FFD700', speed: 1.1 },
   { name: 'Earth', distance: 13, size: 1.0, color: '#4F97FF', speed: 1.0 },
@@ -23,10 +36,14 @@ const PLANET_DATA = [
   { name: 'Neptune', distance: 85, size: 2.4, color: '#5C82FF', speed: 0.15 }
 ];
 
-const ASTEROID_ORBIT_A = 22; 
-const ASTEROID_ORBIT_B = 18; 
+interface OrbitPathProps {
+  xRadius: number;
+  zRadius: number;
+  color?: string;
+  opacity?: number;
+}
 
-const OrbitPath = ({ xRadius, zRadius, color = "#ffffff", opacity = 0.15 }) => {
+const OrbitPath: React.FC<OrbitPathProps> = ({ xRadius, zRadius, color = "#ffffff", opacity = 0.15 }) => {
   const points = useMemo(() => {
     const p = [];
     for (let i = 0; i <= 64; i++) {
@@ -50,8 +67,8 @@ const OrbitPath = ({ xRadius, zRadius, color = "#ffffff", opacity = 0.15 }) => {
   );
 };
 
-const Planet = ({ distance, size, color, speed, hasRings }) => {
-    const meshRef = useRef();
+const Planet: React.FC<PlanetData> = ({ distance, size, color, speed, hasRings }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
 
     useFrame(({ clock }) => {
         if (meshRef.current) {
@@ -103,14 +120,32 @@ const Sun = () => {
     );
 };
 
-const Asteroid = () => {
-    const meshRef = useRef();
+interface TrackedObjectData {
+  name?: string;
+  distance_au?: number;
+  velocity_km_s?: number;
+  eccentricity?: number;
+}
+
+interface TrackedObjectProps {
+  data: TrackedObjectData;
+}
+
+const TrackedObject: React.FC<TrackedObjectProps> = ({ data }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
+    
+    // Use data to determine orbit (default to standard asteroid values if missing)
+    const semiMajorAxis = data?.distance_au ? data.distance_au * 10 : 22; // Scale AU -> scene units
+    const eccentricity = data?.eccentricity || 0.2;
+    const a = semiMajorAxis;
+    const b = a * Math.sqrt(1 - eccentricity * eccentricity); // Semi-minor axis
 
     useFrame(({ clock }) => {
         if (meshRef.current) {
-            const t = clock.getElapsedTime() * 0.6;
-            const x = ASTEROID_ORBIT_A * Math.cos(t);
-            const z = ASTEROID_ORBIT_B * Math.sin(t);
+            // Simplified orbital motion
+            const t = clock.getElapsedTime() * (data?.velocity_km_s ? data.velocity_km_s / 50 : 0.6);
+            const x = a * Math.cos(t);
+            const z = b * Math.sin(t);
             meshRef.current.position.set(x, 0, z);
             meshRef.current.rotation.x += 0.02;
             meshRef.current.rotation.y += 0.03;
@@ -119,16 +154,29 @@ const Asteroid = () => {
 
     return (
         <group>
-             <OrbitPath xRadius={ASTEROID_ORBIT_A} zRadius={ASTEROID_ORBIT_B} color="#ff0000" opacity={0.4} />
+             <OrbitPath xRadius={a} zRadius={b} color="#ff0000" opacity={0.6} />
              <mesh ref={meshRef}>
-                 <dodecahedronGeometry args={[0.4, 0]} />
-                 <meshStandardMaterial color="#888888" roughness={0.9} />
+                 <dodecahedronGeometry args={[0.6, 0]} />
+                 <meshStandardMaterial color="#ff4444" roughness={0.7} emissive="#ff0000" emissiveIntensity={0.5} />
+                 <Text 
+                    position={[0, 1.5, 0]} 
+                    fontSize={1} 
+                    color="white" 
+                    anchorX="center" 
+                    anchorY="middle"
+                 >
+                    {data?.name || "Target"}
+                 </Text>
              </mesh>
         </group>
     );
 };
 
-const AsteroidOrbit3D = () => {
+interface AsteroidOrbit3DProps {
+  data: TrackedObjectData;
+}
+
+const AsteroidOrbit3D: React.FC<AsteroidOrbit3DProps> = ({ data }) => {
     return (
         <div className="w-full h-[600px] bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 relative">
             <Canvas camera={{ position: [0, 60, 80], fov: 45 }}>
@@ -140,7 +188,7 @@ const AsteroidOrbit3D = () => {
                     {PLANET_DATA.map((planet, index) => (
                         <Planet key={index} {...planet} />
                     ))}
-                    <Asteroid />
+                    <TrackedObject data={data} />
                 </group>
 
                 <OrbitControls 
@@ -155,7 +203,7 @@ const AsteroidOrbit3D = () => {
             <div className="absolute bottom-4 left-4 text-white/50 text-xs font-mono pointer-events-none bg-black/50 p-2 rounded backdrop-blur-sm">
                 <p className="font-bold text-white mb-1">SOLAR SYSTEM VIEW</p>
                 <p>• Sun & 8 Planets</p>
-                <p>• Tracked Asteroid</p>
+                <p>• Currently Tracking: <span className="text-red-400 font-bold">{data?.name || "Unknown Object"}</span></p>
                 <p className="mt-1 opacity-70">Not to scale</p>
             </div>
         </div>
