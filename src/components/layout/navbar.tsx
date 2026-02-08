@@ -72,7 +72,7 @@ export function Navbar() {
 
 
         {/* Center: Navigation (Pill Style) */}
-        <nav className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+        <nav className="hidden xl:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
           {NAV_LINKS.map((link) => {
             const isActive = pathname === link.href;
             const Icon = link.icon;
@@ -136,7 +136,7 @@ export function Navbar() {
           )}
 
           {/* Hamburger Menu Toggle */}
-          <div className="ml-2">
+          <div className="ml-2 xl:hidden">
             <Button
               variant="ghost"
               size="icon"
