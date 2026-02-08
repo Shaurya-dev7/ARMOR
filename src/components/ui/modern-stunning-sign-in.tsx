@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Shield, Chrome } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 const SignIn1 = () => {
   const [email, setEmail] = React.useState("");
@@ -14,6 +15,7 @@ const SignIn1 = () => {
   
   const supabase = createClient();
   const router = useRouter();
+  const { signInWithGoogle } = useAuth();
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -100,7 +102,10 @@ const SignIn1 = () => {
               {loading ? "CONNECTING..." : "Establish Connection"}
             </button>
             {/* Google Sign In */}
-            <button className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-5 py-3 font-medium text-white shadow transition mb-2 text-sm border border-white/10">
+            <button 
+              onClick={signInWithGoogle}
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-5 py-3 font-medium text-white shadow transition mb-2 text-sm border border-white/10"
+            >
               <Chrome className="w-5 h-5" />
               Continue with Google
             </button>
@@ -170,6 +175,7 @@ const SignUp1 = () => {
   
   const supabase = createClient();
   const router = useRouter();
+  const { signInWithGoogle } = useAuth();
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -297,7 +303,10 @@ const SignUp1 = () => {
               {loading ? "INITIALIZING..." : "Initialize Protocol"}
             </button>
             {/* Google Sign Up */}
-            <button className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-5 py-3 font-medium text-white shadow transition mb-2 text-sm border border-white/10">
+            <button 
+              onClick={signInWithGoogle}
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-5 py-3 font-medium text-white shadow transition mb-2 text-sm border border-white/10"
+            >
               <Chrome className="w-5 h-5" />
               Continue with Google
             </button>

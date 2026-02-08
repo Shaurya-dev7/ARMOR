@@ -94,37 +94,62 @@ function PalermoBar({ value = -3 }: { value?: number }) {
 }
 
 // Orbit Uncertainty Visualization
-function OrbitUncertainty() {
+// Orbit Uncertainty Visualization
+function OrbitUncertainty({ conditionCode = 0, objectName = 'Reference Object' }: { conditionCode?: number, objectName?: string }) {
+  // Map condition code (0-9) to visual properties
+  // 0 = Highly certain (small, tight ellipse)
+  // 9 = Highly uncertain (large, diffuse ellipse)
+  
+  // Normalize code 0-9 to a scale of 0-1 for sizing
+  const normalizedUncertainty = Math.min(Math.max(conditionCode, 0), 9) / 9;
+  
+  // Width from 20px to 120px
+  const width = 20 + (normalizedUncertainty * 100); 
+  // Height from 10px to 60px
+  const height = 10 + (normalizedUncertainty * 50);
+  // Opacity from 0.8 to 0.2 (more uncertain = more diffuse)
+  const opacity = 0.8 - (normalizedUncertainty * 0.6);
+  // Color: Green (0) -> Yellow -> Red (9)
+  const colorClass = conditionCode < 3 ? 'border-green-400 bg-green-400/20' : 
+                     conditionCode < 6 ? 'border-yellow-400 bg-yellow-400/20' : 
+                     'border-red-400 bg-red-400/20';
+
   return (
-    <div className="relative h-48 flex items-center justify-center">
-      {/* Central body (Earth) */}
-      <div className="absolute w-8 h-8 rounded-full bg-blue-500 z-10" />
+    <div className="relative h-48 flex items-center justify-center overflow-hidden">
+      {/* Central body (Sun/Earth relative) */}
+      <div className="absolute w-4 h-4 rounded-full bg-yellow-300 shadow-[0_0_20px_rgba(253,224,71,0.5)] z-20" />
       
-      {/* Orbit path */}
-      <div className="absolute w-40 h-40 rounded-full border border-white/20" />
+      {/* Orbit path approximation */}
+      <div className="absolute w-40 h-40 rounded-full border border-white/10 border-dashed animate-[spin_60s_linear_infinite]" />
       
-      {/* Uncertainty ellipse */}
-      <div 
-        className="absolute w-6 h-16 rounded-full border-2 border-primary/50 bg-primary/10 animate-pulse"
-        style={{ 
-          transform: 'rotate(-45deg) translateX(56px)',
-        }}
-      />
-      
-      {/* Asteroid dot */}
-      <div 
-        className="absolute w-3 h-3 rounded-full bg-primary"
-        style={{ 
-          transform: 'rotate(-45deg) translateX(56px)',
-        }}
-      />
+      {/* Uncertainty ellipse container - positioned on orbit */}
+      <div className="absolute w-full h-full animate-[spin_20s_linear_infinite]">
+         <div className="absolute top-1/2 right-4 -translate-y-1/2 translate-x-1/2 overflow-visible">
+            {/* The Actual Uncertainty Region */}
+            <div 
+                className={`rounded-full border-2 ${colorClass} transition-all duration-1000 relative`}
+                style={{ 
+                  width: `${width}px`, 
+                  height: `${height}px`,
+                  opacity: opacity,
+                  transform: 'rotate(-45deg)', // Tilt to show orbital plane effect
+                  boxShadow: `0 0 ${width/2}px currentColor`
+                }}
+            >
+                {/* Center point (Most likely position) */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full animate-ping" />
+            </div>
+         </div>
+      </div>
       
       {/* Labels */}
-      <div className="absolute top-2 left-2 text-xs text-muted-foreground">
-        Uncertainty Region
+      <div className="absolute top-2 left-2 text-xs text-muted-foreground flex flex-col gap-1">
+        <span className="font-mono text-xs text-primary/80">TARGET: {objectName}</span>
+        <span className="font-mono text-xs">U-PARAMETER: {conditionCode}</span>
       </div>
-      <div className="absolute bottom-2 right-2 text-xs text-primary">
-        ↔ Error Ellipsoid
+      
+      <div className="absolute bottom-2 right-2 text-xs text-white/40 italic">
+        {conditionCode === 0 ? "Highest Certainty" : conditionCode === 9 ? "Max Uncertainty" : "Calculated Region"}
       </div>
     </div>
   );
@@ -148,7 +173,41 @@ function InfoCard({ icon: Icon, title, children }: { icon: any; title: string; c
   );
 }
 
+import { useState, useEffect } from 'react';
+import { fetchSBDBData } from '@/lib/sbdb/client';
+
 export default function RiskIntelligencePage() {
+  const [riskData, setRiskData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Default to Bennu for demonstration
+  const REFERENCE_ASTEROID_ID = '2101955'; 
+
+  useEffect(() => {
+    const loadRiskData = async () => {
+      try {
+        const data = await fetchSBDBData(REFERENCE_ASTEROID_ID);
+        setRiskData(data);
+      } catch (error) {
+        console.error('Failed to load risk data', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRiskData();
+  }, []);
+  // Extract Condition Code (U-factor)
+  // SBDB returns orbit data in `orbit` property usually, or we parse from phys_par if available, 
+  // but with orbit=1 strict, it's often in `object.orbit_class` or similar structure.
+  // actually SBDB API with orbit=1 returns `orbit` object with `condition_code`
+  const conditionCode = riskData?.orbit?.condition_code ? parseInt(riskData.orbit.condition_code) : 0; // Default to 0 if loading/not found
+
+  // Mock Torino/Palermo for demonstration if not in basic SBDB response (usually needs Sentry API)
+  // For Bennu, we know values: Torino ~0 (currently), Palermo large negative.
+  // We'll leave them static or random-ish if strictly SBDB doesn't return them, 
+  // but user asked specifically for "orbit uncertainity daigram functional".
+  
   return (
     <>
     <AnimatedShaderBackground />
@@ -160,7 +219,9 @@ export default function RiskIntelligencePage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Risk Intelligence</h1>
-          <p className="text-muted-foreground">Understanding threat assessment scales</p>
+          <p className="text-muted-foreground">
+            {loading ? 'Fetching asteroid data...' : `Live Data: ${riskData?.object?.fullname || 'Unknown Object'}`}
+          </p>
         </div>
       </div>
 
@@ -175,7 +236,8 @@ export default function RiskIntelligencePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <TorinoGauge level={0} />
+            <TorinoGauge level={0} /> 
+            {/* Note: Torino/Sentry data requires different API (Sentry API), keeping static for now as requested focus is Orbit Uncertainty */}
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
               <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
                 <span className="block text-green-500 font-bold">0-1</span>
@@ -215,7 +277,16 @@ export default function RiskIntelligencePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <OrbitUncertainty />
+            {loading ? (
+                <div className="h-48 flex items-center justify-center text-muted-foreground animate-pulse">
+                    Loading orbital data...
+                </div>
+            ) : (
+                <OrbitUncertainty 
+                    conditionCode={conditionCode} 
+                    objectName={riskData?.object?.fullname}
+                />
+            )}
           </CardContent>
         </Card>
 
@@ -226,7 +297,7 @@ export default function RiskIntelligencePage() {
             Time between first and last observation. Longer = more precise.
           </InfoCard>
           <InfoCard icon={Shield} title="Condition Code">
-            0-9 scale of orbit certainty. 0 is best.
+            0-9 scale of orbit certainty. 0 is best. Currently showing: <span className="text-primary font-bold">{loading ? '...' : conditionCode}</span>
           </InfoCard>
           <InfoCard icon={Info} title="Error Ellipsoid">
             3D region where object might be located.

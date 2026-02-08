@@ -354,6 +354,7 @@ type AnimatedFormProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   googleLogin?: string;
   gitHubLogin?: string;
+  onGoogleLogin?: () => void;
   goTo?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
@@ -372,6 +373,7 @@ const AnimatedForm = memo(function AnimatedForm({
   onSubmit,
   googleLogin,
   gitHubLogin,
+  onGoogleLogin,
   goTo,
 }: AnimatedFormProps) {
   const [visible, setVisible] = useState<boolean>(false);
@@ -441,7 +443,7 @@ const AnimatedForm = memo(function AnimatedForm({
                 <button
                   className='g-button group/btn bg-transparent w-full rounded-md border h-10 font-medium outline-hidden hover:cursor-pointer transition-all duration-300 hover:bg-neutral-100 dark:hover:bg-zinc-800'
                   type='button'
-                  onClick={() => console.log('Google login clicked')}
+                  onClick={onGoogleLogin}
                 >
                   <span className='flex items-center justify-center w-full h-full gap-3'>
                     <Image
@@ -638,12 +640,14 @@ interface AuthTabsProps {
   };
   goTo: (event: React.MouseEvent<HTMLButtonElement>) => void;
   handleSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onGoogleLogin?: () => void;
 }
 
 const AuthTabs = memo(function AuthTabs({
   formFields,
   goTo,
   handleSubmit,
+  onGoogleLogin,
 }: AuthTabsProps) {
   return (
     <div className='flex max-lg:justify-center w-full md:w-auto'>
@@ -655,6 +659,7 @@ const AuthTabs = memo(function AuthTabs({
           goTo={goTo}
           googleLogin='Sign in with Google'
           gitHubLogin='Sign in with GitHub'
+          onGoogleLogin={onGoogleLogin}
         />
       </div>
     </div>

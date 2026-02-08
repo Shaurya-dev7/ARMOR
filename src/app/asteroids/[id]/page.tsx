@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, ArrowLeft, Ruler, Activity, Crosshair, Image as ImageIcon } from 'lucide-react';
 import AnimatedShaderBackground from '@/components/ui/animated-shader-background';
+import { getAsteroidImage } from '@/lib/nasa-images/client';
+import { fetchSBDBData, extractComposition } from '@/lib/sbdb/client';
 import dynamic from 'next/dynamic';
 
 const AsteroidOrbit3D = dynamic(() => import('@/components/ui/AsteroidOrbit3D'), { ssr: false });
@@ -17,6 +19,8 @@ export default function AsteroidPage() {
   const id = params.id as string;
 
   const [asteroid, setAsteroid] = useState<any | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [composition, setComposition] = useState<{ type: string, description: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +40,16 @@ export default function AsteroidPage() {
         
         if (found) {
           setAsteroid(found);
+
+          // Fetch additional data in parallel
+          const [img, sbdbData] = await Promise.all([
+            getAsteroidImage(found.name),
+            fetchSBDBData(found.id) // NeoWs ID is usually the SPK-ID
+          ]);
+
+          setImageUrl(img);
+          const comp = extractComposition(sbdbData);
+          setComposition(comp);
         } else {
           setError('Asteroid not found in daily database.');
         }
@@ -175,6 +189,53 @@ export default function AsteroidPage() {
                         </div>
                     </div>
                  </CardContent>
+            </Card>
+
+            {/* Composition & Imagery */}
+            <Card className="glass-card border-l-4 border-l-purple-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ImageIcon className="w-5 h-5 text-purple-400" />
+                  Composition & Visuals
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {imageUrl && (
+                  <div className="rounded-lg overflow-hidden border border-white/10 relative h-48 group">
+                     {/* eslint-disable-next-line @next/next/no-img-element */}
+                     <img 
+                       src={imageUrl} 
+                       alt={asteroid.name}
+                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                     />
+                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                       <p className="text-xs text-white/80">Source: NASA Image Library</p>
+                     </div>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between items-start border-b border-white/5 pb-2">
+                    <span className="text-white/60">Spectral Class</span>
+                    {composition ? (
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-purple-400 block">{composition.type}</span>
+                        <span className="text-xs text-white/50">{composition.description}</span>
+                      </div>
+                    ) : (
+                      <span className="text-white/40 italic">Unknown</span>
+                    )}
+                  </div>
+                  
+                  {composition && (
+                    <div className="p-3 bg-purple-500/10 rounded border border-purple-500/20 text-xs">
+                       <p className="text-purple-200">
+                         This spectral class suggests a <span className="font-bold">{composition.description.split('(')[0]}</span> composition.
+                       </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
             </Card>
         </div>
 

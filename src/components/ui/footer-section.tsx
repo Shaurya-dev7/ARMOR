@@ -19,12 +19,20 @@ function Footerdemo() {
   const [isChatOpen, setIsChatOpen] = React.useState(false)
 
   React.useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark")
+    // Sync state with DOM on mount to respect server-side/script injection
+    setIsDarkMode(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  const toggleTheme = (checked: boolean) => {
+    setIsDarkMode(checked);
+    if (checked) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.remove("dark")
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
-  }, [isDarkMode])
+  };
 
   return (
     <footer className="relative border-t bg-background text-foreground transition-colors duration-300">
@@ -78,7 +86,7 @@ function Footerdemo() {
             <address className="space-y-2 text-sm not-italic">
               <p>123 Innovation Street</p>
               <p>Tech City, TC 12345</p>
-              <p>Phone: (123) 456-7890</p>
+              <p>Phone: 9661504769</p>
               <p>Email: hello@example.com</p>
             </address>
           </div>
@@ -143,7 +151,7 @@ function Footerdemo() {
               <Switch
                 id="dark-mode"
                 checked={isDarkMode}
-                onCheckedChange={setIsDarkMode}
+                onCheckedChange={toggleTheme}
               />
               <Moon className="h-4 w-4" />
               <Label htmlFor="dark-mode" className="sr-only">

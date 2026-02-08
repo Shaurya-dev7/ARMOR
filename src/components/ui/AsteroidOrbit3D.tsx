@@ -134,16 +134,41 @@ interface TrackedObjectProps {
 const TrackedObject: React.FC<TrackedObjectProps> = ({ data }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     
-    // Use data to determine orbit (default to standard asteroid values if missing)
-    const semiMajorAxis = data?.distance_au ? data.distance_au * 10 : 22; // Scale AU -> scene units
-    const eccentricity = data?.eccentricity || 0.2;
-    const a = semiMajorAxis;
-    const b = a * Math.sqrt(1 - eccentricity * eccentricity); // Semi-minor axis
+    // Determine orbit parameters. If data is invalid/missing, generate a "safe" random orbit.
+    const orbitParams = useMemo(() => {
+        // Check if we have valid distance data (must be > 0.2 AU to be clearly outside Sun radius of ~0.5 units)
+        // Note: Sun radius is 2.5 scene units. 0.3 AU * 10 = 3.0 units. So > 0.3 AU is safe.
+        const hasValidData = data?.distance_au && data.distance_au > 0.3;
+        
+        if (hasValidData) {
+            return {
+                a: (data.distance_au!) * 10, // Scale to scene units
+                e: data.eccentricity || 0.2,
+                speed: data.velocity_km_s ? data.velocity_km_s / 50 : 0.5,
+                isFallback: false
+            };
+        } else {
+            // Fallback: Generate random orbit in Main Belt (1.2 - 3.5 AU)
+            // We use the object name to seed the randomness so it remains consistent for the same object
+            const seed = data?.name ? data.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : Math.random() * 1000;
+            const pseudoRandom = (seed % 100) / 100; // 0 to 1
+            
+            const randomA = 1.2 + (pseudoRandom * 2.3); // 1.2 to 3.5 AU
+            return {
+                a: randomA * 10,
+                e: 0.1 + (pseudoRandom * 0.2), // 0.1 to 0.3
+                speed: 0.2 + ((1 - pseudoRandom) * 0.4), // Slower for further objects
+                isFallback: true
+            };
+        }
+    }, [data]);
+
+    const a = orbitParams.a;
+    const b = a * Math.sqrt(1 - orbitParams.e * orbitParams.e);
 
     useFrame(({ clock }) => {
         if (meshRef.current) {
-            // Simplified orbital motion
-            const t = clock.getElapsedTime() * (data?.velocity_km_s ? data.velocity_km_s / 50 : 0.6);
+            const t = clock.getElapsedTime() * orbitParams.speed;
             const x = a * Math.cos(t);
             const z = b * Math.sin(t);
             meshRef.current.position.set(x, 0, z);
@@ -154,10 +179,15 @@ const TrackedObject: React.FC<TrackedObjectProps> = ({ data }) => {
 
     return (
         <group>
-             <OrbitPath xRadius={a} zRadius={b} color="#ff0000" opacity={0.6} />
+             <OrbitPath xRadius={a} zRadius={b} color={orbitParams.isFallback ? "#ffaa00" : "#ff0000"} opacity={orbitParams.isFallback ? 0.3 : 0.6} />
              <mesh ref={meshRef}>
                  <dodecahedronGeometry args={[0.6, 0]} />
-                 <meshStandardMaterial color="#ff4444" roughness={0.7} emissive="#ff0000" emissiveIntensity={0.5} />
+                 <meshStandardMaterial 
+                    color={orbitParams.isFallback ? "#ffaa00" : "#ff4444"} 
+                    roughness={0.7} 
+                    emissive={orbitParams.isFallback ? "#ffaa00" : "#ff0000"} 
+                    emissiveIntensity={0.5} 
+                 />
                  <Text 
                     position={[0, 1.5, 0]} 
                     fontSize={1} 
@@ -166,6 +196,7 @@ const TrackedObject: React.FC<TrackedObjectProps> = ({ data }) => {
                     anchorY="middle"
                  >
                     {data?.name || "Target"}
+                    {orbitParams.isFallback && "\n(Simulated Orbit)"}
                  </Text>
              </mesh>
         </group>
